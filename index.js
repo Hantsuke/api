@@ -9,10 +9,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 const db = mysql.createConnection({
-    host: 'monorail.proxy.rlwy.net', // Endereço do servidor MySQL
-    user: 'root', // Nome de usuário do MySQL
-    password: 'RFvpUdFgVNptamyhkfetrDzUyOzRDFms', // Senha do MySQL
-    database: 'base_de_dados', // Nome do banco de dados
+    host: 'monorail.proxy.rlwy.net',
+    user: 'root',
+    password: 'RFvpUdFgVNptamyhkfetrDzUyOzRDFms',
+    database: 'base_de_dados',
     port: 52314
 });
 
@@ -47,7 +47,7 @@ const construirClausulaWhere = (params) => {
     return clausulasWhere.length > 0 ? `WHERE ${clausulasWhere.join(' AND ')}` : '';
 };
 
-const tratarRequisicao = async (req, res, tabela) => {
+const tratarRequisicao = async (req, res, tabela, coluna = null, valor = null) => {
     const metodo = req.method;
     const params = req.query;
     const dados = req.body;
@@ -56,9 +56,7 @@ const tratarRequisicao = async (req, res, tabela) => {
         let resposta;
         switch (metodo) {
             case 'GET':
-                if (params.column && params.value) {
-                    const coluna = params.column;
-                    const valor = params.value;
+                if (coluna && valor) {
                     const sql = `SELECT * FROM \`${tabela}\` WHERE \`${coluna}\`='${valor}'`;
                     resposta = await executarConsulta(sql);
                 } else {
@@ -70,9 +68,7 @@ const tratarRequisicao = async (req, res, tabela) => {
                 break;
             
             case 'PUT':
-                if (params.column && params.value) {
-                    const coluna = params.column;
-                    const valor = params.value;
+                if (coluna && valor) {
                     const camposAtualizar = Object.keys(dados).map(chave => `\`${chave}\`='${dados[chave]}'`).join(', ');
                     const sql = `UPDATE \`${tabela}\` SET ${camposAtualizar} WHERE \`${coluna}\`='${valor}'`;
                     const resultado = await executarConsulta(sql);
@@ -89,9 +85,7 @@ const tratarRequisicao = async (req, res, tabela) => {
                 break;
 
             case 'DELETE':
-                if (params.column && params.value) {
-                    const coluna = params.column;
-                    const valor = params.value;
+                if (coluna && valor) {
                     const sql = `DELETE FROM \`${tabela}\` WHERE \`${coluna}\`='${valor}'`;
                     const resultado = await executarConsulta(sql);
                     res.json({ status: 'Sucesso', deleted_rows: resultado.affectedRows });
@@ -114,6 +108,11 @@ recursos.forEach(recurso => {
         .post((req, res) => tratarRequisicao(req, res, recurso))
         .put((req, res) => tratarRequisicao(req, res, recurso))
         .delete((req, res) => tratarRequisicao(req, res, recurso));
+    
+    app.route(`/${recurso}/:column/:value`)
+        .get((req, res) => tratarRequisicao(req, res, recurso, req.params.column, req.params.value))
+        .put((req, res) => tratarRequisicao(req, res, recurso, req.params.column, req.params.value))
+        .delete((req, res) => tratarRequisicao(req, res, recurso, req.params.column, req.params.value));
 });
 
 app.listen(port, () => {
